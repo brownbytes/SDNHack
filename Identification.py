@@ -68,7 +68,3 @@ def macAddresses():
     return macaddrs
 
 
-#buildcsv()
-#updateProfile()
-#print checkProfile('anish')
-

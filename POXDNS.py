@@ -35,8 +35,8 @@ class ParentControl(object):
         self.arptable = {} # stroes ip address and port on switch
         self.macaddrtable = {} # stores mac address and port on switch
         self.dnsqueries={} # stores stats for DNS queries
-        self.c1=0 # count for blacklisted
-        self.c2=0 # count for white lsited
+        self.c=0 # count for blacklisted
+        
 
     def _handle_ConnectionUp(self,event):
         '''
@@ -94,17 +94,25 @@ class ParentControl(object):
                         if answer.qtype in [dns.rr.CNAME_TYPE,dns.rr.A_TYPE]:
                             name = answer.name
                             doname=name.split('.')[1]
-                    print name,doname
 
                     domaintype = self.DNSverify(doname)
-                    print domaintype
+                    try:
+                    	self.c = self.dnsqueries[doname]
+                    	self.c += 1
+                    	self.dnsqueries[doname]=self.c
+                    except KeyError:
+                        self.dnsqueries[doname]=1
+                    print "statistics till now"
+                    print "-------------------------"
+                    for doname in self.dnsqueries:
+                        print doname , self.dnsqueries[doname]
+               
                     if domaintype == ('blacklist','low'): #blocking blacklisted websites for under18
                         print "denying the packets for blacklisted website and low privilege(under18) user :" + str(Identification.username)
-                        self.dnsqueries[doname]= self.c1+1
                         self.dropPacket()
                     elif domaintype == ('whitelist','low'): #allowing whitelisted websites for under18
                         print "allowing the packets for whitelisted  website and low privilege(under18) user :" + str(Identification.username)
-                        self.dnsqueries[doname]= self.c2+1
+                        
                         #self.sendPacket(event,self.macaddrtable[self.arptable[ippkt.dstip]])
                         self.PacketOut(event,self.macaddrtable[self.arptable[ippkt.dstip]])
                     elif domaintype[1] == 'high': #allowing all wesbites for over18
@@ -112,17 +120,24 @@ class ParentControl(object):
                         #self.dnsqueries[doname]= self.c2+1
                         #self.sendPacket(event,self.macaddrtable[self.arptable[ippkt.dstip]]) # this needs to be updated
                         self.PacketOut(event,self.macaddrtable[self.arptable[ippkt.dstip]])
+                        
                     elif domaintype == ('Ywhitelist','vlow'):
                         self.PacketOut(event,self.macaddrtable[self.arptable[ippkt.dstip]])
+                        print "allowing packets for vlow privilege users to young whitelisted web"
+                        
                     elif domaintype == ('Ywhitelist','low'):
                         self.PacketOut(event,self.macaddrtable[self.arptable[ippkt.dstip]])
+                        print "allowing packets for low privilege users to young whitelisted websites"
+                        
                     if self.checkTime() == 'Drop':
                         if domaintype[1]  == 'high': # if time is over 8pm, but over18 is using comp , dont drop
                             #self.sendPacket(event,self.macaddrtable[self.arptable[ippkt.dstip]])
                             self.PacketOut(event,self.macaddrtable[self.arptable[ippkt.dstip]])
+                            
                         elif domaintype[1]  == 'low': # if lower privilege user is using the computer, drop the packet
                             self.dropPacket()
                             print " beyond bedtime..."
+                          
                 else:
 
                     outport = self.macaddrtable[self.arptable[ippkt.dstip]]
